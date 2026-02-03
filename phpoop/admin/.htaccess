@@ -1,0 +1,9 @@
+RewriteEngine On
+
+# Als een bestand of map echt bestaat, serveer dat normaal
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Anders: alles naar index.php
+RewriteRule ^ index.php [L]

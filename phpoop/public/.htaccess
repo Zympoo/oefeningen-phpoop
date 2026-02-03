@@ -1,0 +1,18 @@
+# ------------------------------------------------------------
+# Front controller rewrites
+# ------------------------------------------------------------
+# Alles wat geen bestaande file/map is, gaat naar index.php
+# ------------------------------------------------------------
+
+RewriteEngine On
+
+# Bestaande files rechtstreeks laden
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^ - [L]
+
+# Bestaande directories rechtstreeks laden
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Alle andere routes gaan naar index.php
+RewriteRule ^ index.php [L]
