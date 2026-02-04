@@ -39,7 +39,11 @@ $uri = rtrim($uri, '/') ?: '/';
  * Beveilig admin-routes:
  * als je niet ingelogd bent, ga naar /login
  */
-$publicRoutes = ['/login'];
+$publicRoutes = [
+    '/login',
+    '/login/github',
+    '/login/github/callback',
+];
 
 if (!Auth::check() && !in_array($uri, $publicRoutes, true)) {
     header('Location: ' . ADMIN_BASE_PATH . '/login');
@@ -92,6 +96,15 @@ $router->get('/login', function (): void {
 
 $router->post('/login', function (): void {
     (new AuthController(UsersRepository::make()))->login();
+});
+
+// GitHub OAuth login
+$router->get('/login/github', function (): void {
+    (new AuthController(UsersRepository::make()))->redirectToGitHub();
+});
+
+$router->get('/login/github/callback', function (): void {
+    (new AuthController(UsersRepository::make()))->githubCallback();
 });
 
 $router->post('/logout', function (): void {
@@ -162,6 +175,16 @@ $router->get('/posts/{id}/edit', function (int $id): void {
 
 $router->post('/posts/{id}/update', function (int $id): void {
     (new PostsController(PostsRepository::make()))->update($id);
+});
+
+$router->post('/posts/{id}/disable', function (int $id) use ($requireAdmin): void {
+    $requireAdmin();
+    (new PostsController(PostsRepository::make()))->disable($id);
+});
+
+$router->post('/posts/{id}/enable', function (int $id) use ($requireAdmin): void {
+    $requireAdmin();
+    (new PostsController(PostsRepository::make()))->enable($id);
 });
 
 /**

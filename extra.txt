@@ -1,0 +1,13 @@
+Stap A: eerst nullable toevoegen
+ALTER TABLE posts
+ADD COLUMN slug VARCHAR(255) NULL;
+
+Stap B: slugs invullen (voorbeeld)
+UPDATE posts
+SET slug = LOWER(REPLACE(title, ' ', '-'))
+WHERE slug IS NULL;
+
+Stap C: kolom verplicht maken + uniek
+ALTER TABLE posts
+MODIFY slug VARCHAR(255) NOT NULL,
+ADD UNIQUE KEY unique_slug (slug);

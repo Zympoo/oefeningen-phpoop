@@ -3,7 +3,7 @@ declare(strict_types=1);
 ?>
 
 <section class="p-6">
-    <div class="bg-white p-6 rounded shadow max-w-md">
+    <div class="bg-white p-6 rounded shadow max-w-md mx-auto">
         <h2 class="text-xl font-bold mb-4">Login</h2>
 
         <?php if (!empty($errors)): ?>
@@ -40,10 +40,18 @@ declare(strict_types=1);
             </div>
 
             <div class="flex gap-4">
-                <button class="border rounded px-4 py-2" type="submit">
+                <!-- Klassieke login knop -->
+                <button class="flex-1 border rounded px-4 py-2 bg-blue-600 text-white hover:bg-blue-700" type="submit">
                     Login
                 </button>
+
+                <!-- GitHub login knop -->
+                <a href="/admin/login/github"
+                   class="flex-1 text-center border rounded px-4 py-2 bg-gray-800 text-white hover:bg-gray-900">
+                    Login met GitHub
+                </a>
             </div>
+
         </form>
     </div>
 </section>

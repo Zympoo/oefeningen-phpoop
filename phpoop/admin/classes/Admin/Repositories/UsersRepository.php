@@ -164,4 +164,46 @@ class UsersRepository
     {
         return new self(Database::getConnection());
     }
+
+    /**
+     * Vind een user via externe provider + ID
+     */
+    public function findByProvider(string $provider, string $providerId): ?array
+    {
+        $sql = "SELECT u.id, u.email, u.name, u.is_active, r.name AS role_name
+            FROM users u
+            JOIN roles r ON r.id = u.role_id
+            WHERE u.provider = :provider
+            AND u.provider_id = :providerId
+            LIMIT 1";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([
+            'provider' => $provider,
+            'providerId' => $providerId
+        ]);
+        $user = $stmt->fetch();
+        return $user === false ? null : $user;
+    }
+
+    /**
+     * Maak een nieuwe user aan via externe login
+     */
+    public function createExternal(string $email, string $name, string $provider, string $providerId): int
+    {
+        // Bepaal default rol_id (bijv. 2 = editor)
+        $roleId = 2;
+
+        $sql = "INSERT INTO users (email, name, role_id, is_active, provider, provider_id)
+            VALUES (:email, :name, :role_id, 1, :provider, :providerId)";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([
+            'email' => $email,
+            'name' => $name,
+            'role_id' => $roleId,
+            'provider' => $provider,
+            'providerId' => $providerId
+        ]);
+
+        return (int)$this->pdo->lastInsertId();
+    }
 }

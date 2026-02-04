@@ -18,7 +18,7 @@ final class PostsRepository
     public function getAll(): array
     {
         $sql = "SELECT id, title, content, status, featured_media_id,
-                created_at, slug
+                created_at, slug, is_active
                 FROM posts
                 ORDER BY id DESC";
         $stmt = $this->pdo->query($sql);
@@ -27,7 +27,7 @@ final class PostsRepository
     public function find(int $id): ?array
     {
         $sql = "SELECT id, title, content, status, featured_media_id,
-                created_at, slug
+                created_at, slug, is_active
                 FROM posts
                 WHERE id = :id
                 LIMIT 1";
@@ -36,13 +36,44 @@ final class PostsRepository
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         return $row !== false ? $row : null;
     }
+
+    /**
+     * disable()
+     * Doel: user blokkeren.
+     */
+    public function disable(int $id): void
+    {
+        $sql = "UPDATE posts
+                SET is_active = 0
+                WHERE id = :id
+                LIMIT 1";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute(['id' => $id]);
+    }
+
+    /**
+     * enable()
+     * Doel: user deblokkeren.
+     */
+    public function enable(int $id): void
+    {
+        $sql = "UPDATE posts
+                SET is_active = 1
+                WHERE id = :id
+                LIMIT 1";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute(['id' => $id]);
+    }
+
     public function create(string $title, string $content, string
                                   $status, string $slug, ?int $featuredMediaId = null): int
     {
         $sql = "INSERT INTO posts (title, content, status, featured_media_id,
-                created_at, slug)
+                created_at, slug, is_active)
                 VALUES (:title, :content, :status, :featured_media_id,
-                NOW(), :slug)";
+                NOW(), :slug, 1)";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([
             'title' => $title,
@@ -98,6 +129,7 @@ final class PostsRepository
                 p.created_at,
                 p.featured_media_id,
                 p.slug,
+                p.is_active,
                 CASE
                 WHEN m.id IS NULL THEN NULL
                 ELSE CONCAT('/', m.path, '/', m.filename)
@@ -106,7 +138,7 @@ final class PostsRepository
                 featured_alt
                 FROM posts p
                 LEFT JOIN media m ON m.id = p.featured_media_id
-                WHERE p.status = 'published'
+                WHERE p.status = 'published' AND p.is_active = 1
                 ORDER BY p.created_at DESC
                 LIMIT " . (int)$limit;
         $stmt = $this->pdo->query($sql);
@@ -124,6 +156,7 @@ final class PostsRepository
                 p.created_at,
                 p.featured_media_id,
                 p.slug,
+                p.is_active,
                 CASE
                 WHEN m.id IS NULL THEN NULL
                 ELSE CONCAT('/', m.path, '/', m.filename)
@@ -132,7 +165,7 @@ final class PostsRepository
                 featured_alt
                 FROM posts p
                 LEFT JOIN media m ON m.id = p.featured_media_id
-                WHERE p.status = 'published'
+                WHERE p.status = 'published' AND p.is_active = 1
                 ORDER BY p.created_at DESC";
         $stmt = $this->pdo->query($sql);
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
@@ -149,6 +182,7 @@ final class PostsRepository
                 p.created_at,
                 p.featured_media_id,
                 p.slug,
+                p.is_active,
                 CASE
                     WHEN m.id IS NULL THEN NULL
                     ELSE CONCAT('/', m.path, '/', m.filename)
@@ -158,6 +192,7 @@ final class PostsRepository
                 LEFT JOIN media m ON m.id = p.featured_media_id
                 WHERE p.slug = :slug
                   AND p.status = 'published'
+                  AND p.is_active = 1
                 LIMIT 1";
 
         $stmt = $this->pdo->prepare($sql);

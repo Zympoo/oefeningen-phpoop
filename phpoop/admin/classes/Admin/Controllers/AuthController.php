@@ -124,4 +124,116 @@ class AuthController
         exit;
     }
 
+    public function redirectToGitHub(): void
+    {
+        $state = bin2hex(random_bytes(16));
+        $_SESSION['oauth_state'] = $state;
+
+        $url = 'https://github.com/login/oauth/authorize?' . http_build_query([
+                'client_id' => GITHUB_CLIENT_ID,
+                'redirect_uri' => GITHUB_REDIRECT_URI,
+                'scope' => 'user:email',
+                'state' => $state,
+            ]);
+
+        header('Location: ' . $url);
+        exit;
+    }
+
+    public function githubCallback(): void
+    {
+        if (
+            !isset($_GET['state'], $_SESSION['oauth_state']) ||
+            $_GET['state'] !== $_SESSION['oauth_state']
+        ) {
+            http_response_code(403);
+            exit('Invalid state');
+        }
+        unset($_SESSION['oauth_state']);
+
+        $code = $_GET['code'] ?? null;
+        if ($code === null) {
+            exit('No code received');
+        }
+
+        // Access token ophalen
+        $accessToken = $this->fetchGitHubAccessToken($code);
+
+        // User info ophalen
+        $externalUser = $this->fetchGitHubUser($accessToken);
+
+        // Koppelen / aanmaken + session login
+        $this->loginOrCreateUser('github', $externalUser);
+    }
+
+    private function fetchGitHubAccessToken(string $code): string
+    {
+        $response = file_get_contents('https://github.com/login/oauth/access_token', false, stream_context_create([
+            'http' => [
+                'method' => 'POST',
+                'header' => "Accept: application/json\r\n",
+                'content' => http_build_query([
+                    'client_id' => GITHUB_CLIENT_ID,
+                    'client_secret' => GITHUB_CLIENT_SECRET,
+                    'code' => $code,
+                    'redirect_uri' => GITHUB_REDIRECT_URI,
+                ]),
+            ],
+        ]));
+
+        $data = json_decode($response, true);
+
+        return $data['access_token'];
+    }
+
+    private function fetchGitHubUser(string $token): array
+    {
+        $context = stream_context_create([
+            'http' => [
+                'header' => "Authorization: token {$token}\r\nUser-Agent: MiniCMS\r\n",
+            ],
+        ]);
+
+        $response = file_get_contents('https://api.github.com/user', false, $context);
+        $user = json_decode($response, true);
+
+        // Email ophalen (GitHub geeft soms null)
+        if (empty($user['email'])) {
+            $emails = file_get_contents('https://api.github.com/user/emails', false, $context);
+            $emails = json_decode($emails, true);
+            $primary = array_filter($emails, fn($e) => $e['primary'] && $e['verified']);
+            $user['email'] = $primary ? $primary[array_key_first((array)$primary)]['email'] : '';
+        }
+
+        return [
+            'id' => (string)$user['id'],
+            'email' => $user['email'],
+            'name' => $user['name'] ?? $user['login'],
+        ];
+    }
+
+    private function loginOrCreateUser(string $provider, array $externalUser): void
+    {
+        $user = $this->usersRepository->findByProvider($provider, $externalUser['id']);
+
+        if ($user === null) {
+            $userId = $this->usersRepository->createExternal(
+                $externalUser['email'],
+                $externalUser['name'],
+                $provider,
+                $externalUser['id']
+            );
+            $user = $this->usersRepository->findById($userId);
+        }
+
+        if ((int)$user['is_active'] !== 1) {
+            exit('Account is inactive');
+        }
+
+        $_SESSION['user_id'] = (int)$user['id'];
+        $_SESSION['user_role'] = (string)$user['role_name'];
+
+        header('Location: /admin');
+        exit;
+    }
 }

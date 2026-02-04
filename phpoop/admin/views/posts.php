@@ -39,12 +39,15 @@ use Admin\Core\Auth;
                         <a class="underline" href="/admin/posts/<?php echo (int)$post['id']; ?>/edit">
                             Bewerken
                         </a>
-                        <?php if (Auth::isAdmin()): ?>
-                            <a class="underline text-red-600" href="/admin/posts/<?php echo (int)$post['id']; ?>/delete">
-                                Verwijderen
-                            </a>
+                        <?php if (Auth::isAdmin() && (int)$post['is_active'] === 1): ?>
+                            <form class="inline" method="post" action="/admin/posts/<?php echo (int)$post['id']; ?>/disable">
+                                <button class="underline text-red-600" type="submit">Verwijder</button>
+                            </form>
+                        <?php else: ?>
+                            <form class="inline" method="post" action="/admin/posts/<?php echo (int)$post['id']; ?>/enable">
+                                <button class="underline text-green-700" type="submit">Herstel</button>
+                            </form>
                         <?php endif; ?>
-
                     </td>
                 </tr>
             <?php endforeach; ?>

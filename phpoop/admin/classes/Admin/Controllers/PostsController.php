@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Admin\Controllers;
 
+use Admin\Core\Auth;
 use Admin\Core\Flash;
 use Admin\Core\View;
 use Admin\Repositories\MediaRepository;
@@ -24,6 +25,34 @@ final class PostsController
             'title' => 'Posts',
             'posts' => $this->posts->getAll(),
         ]);
+    }
+
+    public function disable(int $id): void
+    {
+        if (!Auth::isAdmin()) {
+            header('Location: /admin');
+            exit;
+        }
+
+        $this->posts->disable($id);
+
+        Flash::set('Post verwijderd.', 'success');
+        header('Location: /admin/posts');
+        exit;
+    }
+
+    public function enable(int $id): void
+    {
+        if (!Auth::isAdmin()) {
+            header('Location: /admin');
+            exit;
+        }
+
+        $this->posts->enable($id);
+
+        Flash::set('Post hersteld.', 'success');
+        header('Location: /admin/posts');
+        exit;
     }
 
     public function create(): void

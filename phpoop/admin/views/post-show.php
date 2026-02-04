@@ -17,8 +17,11 @@ declare(strict_types=1);
             <span>Datum: <?php echo htmlspecialchars((string)$post['created_at'], ENT_QUOTES); ?></span>
         </div>
 
-        <div class="mt-6">
+        <div class="flex gap-10 mt-6">
             <a class="underline" href="/admin/posts">Terug naar overzicht</a>
+            <a class="underline text-red-600" href="/admin/posts/<?php echo (int)$post['id']; ?>/delete">
+                Definitief verwijderen
+            </a>
         </div>
     </div>
 </section>

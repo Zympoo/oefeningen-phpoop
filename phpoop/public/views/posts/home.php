@@ -4,8 +4,7 @@ error_reporting(E_ALL);
 ini_set('display_errors', '1');
 ini_set('display_startup_errors', '1');
 ob_start();
-$defaultImg = 'https://images.unsplash.com/photo-1526481280695-
-3c687fd5432c?auto=format&fit=crop&w=1400&q=60';
+$defaultImg = 'https://images.unsplash.com/photo-1526481280695-3c687fd5432c?auto=format&fit=crop&w=1400&q=60';
 ?>
     <header class="mb-8">
         <h1 class="text-3xl font-semibold">Laatste posts</h1>
@@ -47,8 +46,7 @@ overflow-hidden">
                 </a>
                 <div class="p-6">
                     <h2 class="text-xl font-semibold">
-                        <a class="hover:underline" href="/posts/<?=
-                        $post['slug'] ?>">
+                        <a class="hover:underline" href="/posts/<?= $post['slug'] ?>">
                             <?= htmlspecialchars((string)($post['title'] ??
                                     ''), ENT_QUOTES) ?>
                         </a>
