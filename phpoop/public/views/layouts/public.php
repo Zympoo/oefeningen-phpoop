@@ -16,7 +16,7 @@ declare(strict_types=1);
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-
+    <meta name="description" content="<?= htmlspecialchars($description ?? 'MiniCMS - Public', ENT_QUOTES) ?>">
     <!-- Title veilig tonen -->
     <title><?= htmlspecialchars($title ?? 'MiniCMS') ?></title>
 

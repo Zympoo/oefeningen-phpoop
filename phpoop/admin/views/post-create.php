@@ -1,5 +1,8 @@
 <?php
 declare(strict_types=1);
+
+use Admin\Core\Auth;
+
 ?>
 
 <section class="p-6">
@@ -26,6 +29,27 @@ declare(strict_types=1);
                           required><?= htmlspecialchars((string)($old['content'] ?? ''), ENT_QUOTES) ?></textarea>
             </div>
 
+            <?php if(Auth::isAdmin()): ?>
+                <div>
+                    <label class="block text-sm font-semibold mb-1">Meta Title</label>
+                    <input class="w-full border rounded px-3 py-2"
+                           type="text"
+                           name="meta_title"
+                           maxlength="70"
+                           value="<?= htmlspecialchars((string)($old['meta_title'] ?? ''), ENT_QUOTES) ?>"
+                           placeholder="Max 70 tekens">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold mb-1">Meta Description</label>
+                    <textarea class="w-full border rounded px-3 py-2"
+                              name="meta_description"
+                              rows="3"
+                              maxlength="160"
+                              placeholder="Max 160 tekens"><?= htmlspecialchars((string)($old['meta_description'] ?? ''), ENT_QUOTES) ?></textarea>
+                </div>
+            <?php endif ?>
+
             <div>
                 <label class="block text-sm font-semibold mb-1">Status</label>
                 <?php $status = (string)($old['status'] ?? 'draft'); ?>
@@ -33,6 +57,14 @@ declare(strict_types=1);
                     <option value="draft" <?= $status === 'draft' ? 'selected' : '' ?>>draft</option>
                     <option value="published" <?= $status === 'published' ? 'selected' : '' ?>>published</option>
                 </select>
+            </div>
+
+            <div>
+                <label class="block text-sm font-semibold mb-1">Datum / tijd voor publishen</label>
+                <input class="w-full border rounded px-3 py-2"
+                       type="datetime-local"
+                       name="publishDate"
+                       value="<?= htmlspecialchars((string)($old['publishDate'] ?? ''), ENT_QUOTES) ?>">
             </div>
 
             <div>

@@ -17,17 +17,22 @@ final class PostsRepository
 // -------------------------
     public function getAll(): array
     {
-        $sql = "SELECT id, title, content, status, featured_media_id,
-                created_at, slug, is_active
+        $this->publishPosts();
+
+        $sql = "SELECT id, title, content, status, featured_media_id, to_publish_at,
+                created_at, slug, is_active, meta_title, meta_description
                 FROM posts
                 ORDER BY id DESC";
         $stmt = $this->pdo->query($sql);
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
+
     public function find(int $id): ?array
     {
-        $sql = "SELECT id, title, content, status, featured_media_id,
-                created_at, slug, is_active
+        $this->publishPosts();
+
+        $sql = "SELECT id, title, content, status, featured_media_id, to_publish_at,
+                created_at, slug, is_active, meta_title, meta_description
                 FROM posts
                 WHERE id = :id
                 LIMIT 1";
@@ -67,32 +72,43 @@ final class PostsRepository
         $stmt->execute(['id' => $id]);
     }
 
-    public function create(string $title, string $content, string
-                                  $status, string $slug, ?int $featuredMediaId = null): int
-    {
-        $sql = "INSERT INTO posts (title, content, status, featured_media_id,
-                created_at, slug, is_active)
-                VALUES (:title, :content, :status, :featured_media_id,
-                NOW(), :slug, 1)";
+    public function create(
+        string $title, string $content, string $status, string $slug,
+        ?int $featuredMediaId = null, ?string $toPublishAt = null,
+        ?string $metaTitle = null, ?string $metaDescription = null
+    ): int {
+        $sql = "INSERT INTO posts (title, content, status, featured_media_id, to_publish_at,
+                created_at, slug, is_active, meta_title, meta_description)
+                VALUES (:title, :content, :status, :featured_media_id, :to_publish_at,
+                NOW(), :slug, 1, :meta_title, :meta_description)";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([
             'title' => $title,
             'content' => $content,
             'status' => $status,
             'featured_media_id' => $featuredMediaId,
+            'to_publish_at' => $toPublishAt,
             'slug' => $slug,
+            'meta_title' => $metaTitle,
+            'meta_description' => $metaDescription,
         ]);
         return (int)$this->pdo->lastInsertId();
     }
-    public function update(int $id, string $title, string $content, string
-                               $status, string $slug, ?int $featuredMediaId = null): void
-    {
+
+    public function update(
+        int $id, string $title, string $content, string $status, string $slug,
+        ?int $featuredMediaId = null, ?string $toPublishAt = null,
+        ?string $metaTitle = null, ?string $metaDescription = null
+    ): void {
         $sql = "UPDATE posts
                 SET title = :title,
-                content = :content,
-                status = :status,
-                featured_media_id = :featured_media_id,
-                slug = :slug
+                    content = :content,
+                    status = :status,
+                    featured_media_id = :featured_media_id,
+                    to_publish_at = :to_publish_at,
+                    slug = :slug,
+                    meta_title = :meta_title,
+                    meta_description = :meta_description
                 WHERE id = :id";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([
@@ -101,9 +117,13 @@ final class PostsRepository
             'content' => $content,
             'status' => $status,
             'featured_media_id' => $featuredMediaId,
+            'to_publish_at' => $toPublishAt,
             'slug' => $slug,
+            'meta_title' => $metaTitle,
+            'meta_description' => $metaDescription,
         ]);
     }
+
     public function delete(int $id): void
     {
         $sql = "DELETE FROM posts WHERE id = :id";
@@ -121,48 +141,54 @@ final class PostsRepository
      */
     public function getPublishedLatest(int $limit = 6): array
     {
+        $this->publishPosts();
+
         $limit = max(1, min(50, $limit));
         $sql = "SELECT
                 p.id,
                 p.title,
                 p.content,
+                p.to_publish_at,
                 p.created_at,
                 p.featured_media_id,
                 p.slug,
                 p.is_active,
+                p.meta_title,
+                p.meta_description,
                 CASE
-                WHEN m.id IS NULL THEN NULL
-                ELSE CONCAT('/', m.path, '/', m.filename)
+                    WHEN m.id IS NULL THEN NULL
+                    ELSE CONCAT('/', m.path, '/', m.filename)
                 END AS featured_url,
-                COALESCE(m.alt_text, m.original_name, p.title) AS
-                featured_alt
+                COALESCE(m.alt_text, m.original_name, p.title) AS featured_alt
                 FROM posts p
                 LEFT JOIN media m ON m.id = p.featured_media_id
-                WHERE p.status = 'published' AND p.is_active = 1
+                WHERE p.status = 'published' AND p.is_active = 1 
                 ORDER BY p.created_at DESC
                 LIMIT " . (int)$limit;
         $stmt = $this->pdo->query($sql);
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
-    /**
-     * Alle gepubliceerde posts voor /posts
-     */
+
     public function getPublishedAll(): array
     {
+        $this->publishPosts();
+
         $sql = "SELECT
                 p.id,
                 p.title,
                 p.content,
+                p.to_publish_at,
                 p.created_at,
                 p.featured_media_id,
                 p.slug,
                 p.is_active,
+                p.meta_title,
+                p.meta_description,
                 CASE
-                WHEN m.id IS NULL THEN NULL
-                ELSE CONCAT('/', m.path, '/', m.filename)
+                    WHEN m.id IS NULL THEN NULL
+                    ELSE CONCAT('/', m.path, '/', m.filename)
                 END AS featured_url,
-                COALESCE(m.alt_text, m.original_name, p.title) AS
-                featured_alt
+                COALESCE(m.alt_text, m.original_name, p.title) AS featured_alt
                 FROM posts p
                 LEFT JOIN media m ON m.id = p.featured_media_id
                 WHERE p.status = 'published' AND p.is_active = 1
@@ -170,19 +196,22 @@ final class PostsRepository
         $stmt = $this->pdo->query($sql);
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
-    /**
-     * Detailpagina /posts/{slug}
-     */
+
     public function findPublishedBySlug(string $slug): ?array
     {
+        $this->publishPosts();
+
         $sql = "SELECT
                 p.id,
                 p.title,
                 p.content,
+                p.to_publish_at,
                 p.created_at,
                 p.featured_media_id,
                 p.slug,
                 p.is_active,
+                p.meta_title,
+                p.meta_description,
                 CASE
                     WHEN m.id IS NULL THEN NULL
                     ELSE CONCAT('/', m.path, '/', m.filename)
@@ -200,6 +229,24 @@ final class PostsRepository
 
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         return $row !== false ? $row : null;
+    }
+
+    public function metaTitleExists(string $metaTitle, ?int $excludePostId = null): bool
+    {
+        $sql = "SELECT 1 FROM posts WHERE meta_title = :meta_title";
+        $params = ['meta_title' => $metaTitle];
+
+        if ($excludePostId !== null) {
+            $sql .= " AND id != :id";
+            $params['id'] = $excludePostId;
+        }
+
+        $sql .= " LIMIT 1";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+
+        return (bool)$stmt->fetchColumn();
     }
 
     public function slugExists(string $slug, ?int $postId = null): bool
@@ -232,4 +279,20 @@ final class PostsRepository
 
         return $slug;
     }
+
+    public function publishPosts(): int
+    {
+        $sql = "UPDATE posts
+                SET status = 'published'
+                WHERE status = 'draft'
+                  AND to_publish_at IS NOT NULL
+                  AND to_publish_at <= NOW()
+                  AND is_active = 1";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute();
+
+        return $stmt->rowCount();
+    }
+
 }

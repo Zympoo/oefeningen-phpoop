@@ -48,5 +48,6 @@ if ($alt === '') {
     </article>
 <?php
 $content = ob_get_clean();
-$title = (string)($post['title'] ?? 'Post');
+$title = (string)($post['meta_title'] ?? $post['title']);
+$description = (string)($post['meta_description'] ?? mb_substr(strip_tags($post['content']), 0, 160));
 require __DIR__ . '/../layouts/public.php';

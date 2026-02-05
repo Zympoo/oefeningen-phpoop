@@ -27,39 +27,35 @@ final class PostsController
         ]);
     }
 
-    public function disable(int $id): void
+    public function show(int $id): void
     {
-        if (!Auth::isAdmin()) {
-            header('Location: /admin');
+        $post = $this->posts->find($id);
+
+        if (!$post) {
+            Flash::set('error', 'Post niet gevonden.');
+            header('Location: ' . ADMIN_BASE_PATH . '/posts');
             exit;
         }
 
-        $this->posts->disable($id);
-
-        Flash::set('Post verwijderd.', 'success');
-        header('Location: /admin/posts');
-        exit;
-    }
-
-    public function enable(int $id): void
-    {
-        if (!Auth::isAdmin()) {
-            header('Location: /admin');
-            exit;
-        }
-
-        $this->posts->enable($id);
-
-        Flash::set('Post hersteld.', 'success');
-        header('Location: /admin/posts');
-        exit;
+        View::render('post-show.php', [
+            'title' => 'Post bekijken',
+            'post' => $post,
+        ]);
     }
 
     public function create(): void
     {
         $old = Flash::get('old');
         if (!is_array($old)) {
-            $old = ['title' => '', 'content' => '', 'status' => 'draft', 'featured_media_id' => ''];
+            $old = [
+                'title' => '',
+                'content' => '',
+                'status' => 'draft',
+                'publishDate' => '',
+                'featured_media_id' => '',
+                'meta_title' => '',
+                'meta_description' => '',
+            ];
         }
 
         View::render('post-create.php', [
@@ -71,18 +67,25 @@ final class PostsController
 
     public function store(): void
     {
-        $title   = trim((string)($_POST['title'] ?? ''));
-        $content = trim((string)($_POST['content'] ?? ''));
-        $status  = (string)($_POST['status'] ?? 'draft');
-        $featuredRaw = trim((string)($_POST['featured_media_id'] ?? ''));
+        $title           = trim((string)($_POST['title'] ?? ''));
+        $content         = trim((string)($_POST['content'] ?? ''));
+        $status          = (string)($_POST['status'] ?? 'draft');
+        $toPublishAt     = trim((string)($_POST['publishDate'] ?? ''));
+        $featuredRaw     = trim((string)($_POST['featured_media_id'] ?? ''));
+        $metaTitle = trim((string)($_POST['meta_title'] ?? ''));
+        $metaTitle = $metaTitle === '' ? null : $metaTitle;
 
+        $metaDescription = trim((string)($_POST['meta_description'] ?? ''));
+        $metaDescription = $metaDescription === '' ? null : $metaDescription;
+
+        $toPublishAt = $toPublishAt === '' ? null : $toPublishAt;
         $featuredId = $this->normalizeFeaturedId($featuredRaw);
 
-        $errors = $this->validate($title, $content, $status, $featuredId);
+        $errors = $this->validate($title, $content, $status, $featuredId, $toPublishAt, $metaTitle, $metaDescription);
 
         if (!empty($errors)) {
             Flash::set('warning', $errors);
-            Flash::set('old', compact('title', 'content', 'status') + ['featured_media_id' => $featuredRaw]);
+            Flash::set('old', compact('title','content','status','toPublishAt','metaTitle','metaDescription') + ['featured_media_id'=>$featuredRaw]);
             header('Location: ' . ADMIN_BASE_PATH . '/posts/create');
             exit;
         }
@@ -90,7 +93,7 @@ final class PostsController
         $slug = SlugService::TitleToSlug($title);
         $slug = $this->posts->getUniqueSlug($slug);
 
-        $this->posts->create($title, $content, $status, $slug, $featuredId);
+        $this->posts->create($title, $content, $status, $slug, $featuredId, $toPublishAt, $metaTitle, $metaDescription);
 
         Flash::set('success', 'Post succesvol aangemaakt.');
         header('Location: ' . ADMIN_BASE_PATH . '/posts');
@@ -100,7 +103,6 @@ final class PostsController
     public function edit(int $id): void
     {
         $post = $this->posts->find($id);
-
         if (!$post) {
             Flash::set('error', 'Post niet gevonden.');
             header('Location: ' . ADMIN_BASE_PATH . '/posts');
@@ -113,7 +115,10 @@ final class PostsController
                 'title' => (string)$post['title'],
                 'content' => (string)$post['content'],
                 'status' => (string)$post['status'],
+                'publishDate' => (string)($post['to_publish_at'] ?? ''),
                 'featured_media_id' => (string)($post['featured_media_id'] ?? ''),
+                'meta_title' => (string)($post['meta_title'] ?? ''),
+                'meta_description' => (string)($post['meta_description'] ?? ''),
             ];
         }
 
@@ -135,28 +140,64 @@ final class PostsController
             exit;
         }
 
-        $title   = trim((string)($_POST['title'] ?? ''));
-        $content = trim((string)($_POST['content'] ?? ''));
-        $status  = (string)($_POST['status'] ?? 'draft');
-        $featuredRaw = trim((string)($_POST['featured_media_id'] ?? ''));
+        $title           = trim((string)($_POST['title'] ?? ''));
+        $content         = trim((string)($_POST['content'] ?? ''));
+        $status          = (string)($_POST['status'] ?? 'draft');
+        $toPublishAt     = trim((string)($_POST['publishDate'] ?? ''));
+        $featuredRaw     = trim((string)($_POST['featured_media_id'] ?? ''));
+        $metaTitle = trim((string)($_POST['meta_title'] ?? ''));
+        $metaTitle = $metaTitle === '' ? null : $metaTitle;
 
+        $metaDescription = trim((string)($_POST['meta_description'] ?? ''));
+        $metaDescription = $metaDescription === '' ? null : $metaDescription;
+
+        $toPublishAt = $toPublishAt === '' ? null : $toPublishAt;
         $featuredId = $this->normalizeFeaturedId($featuredRaw);
 
-        $errors = $this->validate($title, $content, $status, $featuredId);
+        $errors = $this->validate($title, $content, $status, $featuredId, $toPublishAt, $metaTitle, $metaDescription, $post['id']);
 
         if (!empty($errors)) {
             Flash::set('warning', $errors);
-            Flash::set('old', compact('title', 'content', 'status') + ['featured_media_id' => $featuredRaw]);
+            Flash::set('old', compact('title','content','status','toPublishAt','metaTitle','metaDescription') + ['featured_media_id'=>$featuredRaw]);
             header('Location: ' . ADMIN_BASE_PATH . '/posts/' . $id . '/edit');
             exit;
         }
+
         $slug = SlugService::TitleToSlug($title);
         $slug = $this->posts->getUniqueSlug($slug, $id);
 
-        $this->posts->update($id, $title, $content, $status, $slug, $featuredId);
+        $this->posts->update($id, $title, $content, $status, $slug, $featuredId, $toPublishAt, $metaTitle, $metaDescription);
 
         Flash::set('success', 'Post succesvol aangepast.');
         header('Location: ' . ADMIN_BASE_PATH . '/posts');
+        exit;
+    }
+
+    public function disable(int $id): void
+    {
+        if (!Auth::isAdmin()) {
+            header('Location: /admin');
+            exit;
+        }
+
+        $this->posts->disable($id);        $this->posts->disable($id);
+
+        Flash::set('Post verwijderd.', 'success');
+        header('Location: /admin/posts');
+        exit;
+    }
+
+    public function enable(int $id): void
+    {
+        if (!Auth::isAdmin()) {
+            header('Location: /admin');
+            exit;
+        }
+
+        $this->posts->enable($id);
+
+        Flash::set('Post hersteld.', 'success');
+        header('Location: /admin/posts');
         exit;
     }
 
@@ -176,53 +217,56 @@ final class PostsController
         ]);
     }
 
-    public function show(int $id): void
-    {
-        $post = $this->posts->find($id);
-
-        if (!$post) {
-            Flash::set('error', 'Post niet gevonden.');
-            header('Location: ' . ADMIN_BASE_PATH . '/posts');
-            exit;
-        }
-
-        View::render('post-show.php', [
-            'title' => 'Post bekijken',
-            'post' => $post,
-        ]);
-    }
-
     private function normalizeFeaturedId(string $raw): ?int
     {
-        if ($raw === '' || !ctype_digit($raw)) {
-            return null;
-        }
+        if ($raw === '' || !ctype_digit($raw)) return null;
         $id = (int)$raw;
         return $id > 0 ? $id : null;
     }
 
-    private function validate(string $title, string $content, string $status, ?int $featuredId): array
-    {
+    private function validate(
+        string $title,
+        string $content,
+        string $status,
+        ?int $featuredId,
+        ?string $toPublishAt,
+        ?string $metaTitle,
+        ?string $metaDescription,
+        ?int $postId = null
+    ): array {
         $errors = [];
 
-        if ($title === '') {
-            $errors[] = 'Titel is verplicht.';
-        } elseif (mb_strlen($title) < 3) {
-            $errors[] = 'Titel moet minstens 3 tekens bevatten.';
-        }
+        if ($title === '') $errors[] = 'Titel is verplicht.';
+        elseif (mb_strlen($title) < 3) $errors[] = 'Titel moet minstens 3 tekens bevatten.';
 
-        if ($content === '') {
-            $errors[] = 'Inhoud is verplicht.';
-        } elseif (mb_strlen($content) < 10) {
-            $errors[] = 'Inhoud moet minstens 10 tekens bevatten.';
-        }
+        if ($content === '') $errors[] = 'Inhoud is verplicht.';
+        elseif (mb_strlen($content) < 10) $errors[] = 'Inhoud moet minstens 10 tekens bevatten.';
 
-        if (!in_array($status, ['draft', 'published'], true)) {
-            $errors[] = 'Status moet draft of published zijn.';
+        if (!in_array($status, ['draft','published'], true)) $errors[] = 'Status moet draft of published zijn.';
+
+        if ($toPublishAt !== null) {
+            try {
+                $publishDate = new \DateTimeImmutable($toPublishAt);
+                $now = new \DateTimeImmutable('now');
+                if ($publishDate < $now) $errors[] = 'Publicatiedatum mag niet in het verleden liggen.';
+            } catch (\Exception $e) {
+                $errors[] = 'Ongeldige publicatiedatum.';
+            }
         }
 
         if ($featuredId !== null && MediaRepository::make()->findImageById($featuredId) === null) {
             $errors[] = 'Featured image is ongeldig.';
+        }
+
+        if ($metaTitle !== null && mb_strlen($metaTitle) > 70) {
+            $errors[] = 'Meta title mag maximaal 70 tekens bevatten.';
+        } elseif ($metaTitle !== null && $this->posts->metaTitleExists($metaTitle, $postId)) {
+            // nu correct met postId
+            $errors[] = 'Meta title bestaat al, kies een andere.';
+        }
+
+        if ($metaDescription !== null && mb_strlen($metaDescription) > 160) {
+            $errors[] = 'Meta description mag maximaal 160 tekens bevatten.';
         }
 
         return $errors;
