@@ -21,6 +21,8 @@ final class PostsController
 
     public function index(): void
     {
+        $this->posts->clearLocksForUser($_SESSION['user_id']);
+
         View::render('posts.php', [
             'title' => 'Posts',
             'posts' => $this->posts->getAll(),

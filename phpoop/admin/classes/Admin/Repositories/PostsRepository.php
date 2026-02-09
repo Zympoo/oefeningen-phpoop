@@ -94,6 +94,17 @@ final class PostsRepository
         return (bool)$stmt->fetchColumn();
     }
 
+    public function clearLocksForUser(int $userId): void
+    {
+        $sql = "UPDATE posts
+            SET locked_by = NULL, locked_at = NULL
+            WHERE locked_by = :user_id";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([
+            'user_id' => $userId,
+        ]);
+    }
+
     public function lock(int $postId, int $userId): void
     {
         $sql = "
