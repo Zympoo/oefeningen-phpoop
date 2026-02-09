@@ -145,8 +145,9 @@ final class PostsController
         $status          = (string)($_POST['status'] ?? 'draft');
         $toPublishAt     = trim((string)($_POST['publishDate'] ?? ''));
         $featuredRaw     = trim((string)($_POST['featured_media_id'] ?? ''));
-        $metaTitle = trim((string)($_POST['meta_title'] ?? ''));
-        $metaTitle = $metaTitle === '' ? null : $metaTitle;
+
+        $metaTitle       = trim((string)($_POST['meta_title'] ?? ''));
+        $metaTitle       = $metaTitle === '' ? null : $metaTitle;
 
         $metaDescription = trim((string)($_POST['meta_description'] ?? ''));
         $metaDescription = $metaDescription === '' ? null : $metaDescription;
@@ -180,7 +181,7 @@ final class PostsController
             exit;
         }
 
-        $this->posts->disable($id);        $this->posts->disable($id);
+        $this->posts->disable($id);
 
         Flash::set('Post verwijderd.', 'success');
         header('Location: /admin/posts');
@@ -261,7 +262,6 @@ final class PostsController
         if ($metaTitle !== null && mb_strlen($metaTitle) > 70) {
             $errors[] = 'Meta title mag maximaal 70 tekens bevatten.';
         } elseif ($metaTitle !== null && $this->posts->metaTitleExists($metaTitle, $postId)) {
-            // nu correct met postId
             $errors[] = 'Meta title bestaat al, kies een andere.';
         }
 

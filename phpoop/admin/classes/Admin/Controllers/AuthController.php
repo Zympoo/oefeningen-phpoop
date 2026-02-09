@@ -153,7 +153,7 @@ class AuthController
 
         $code = $_GET['code'] ?? null;
         if ($code === null) {
-            exit('No code received');
+            exit('Geen code ontvangen');
         }
 
         // Access token ophalen
@@ -168,18 +168,24 @@ class AuthController
 
     private function fetchGitHubAccessToken(string $code): string
     {
-        $response = file_get_contents('https://github.com/login/oauth/access_token', false, stream_context_create([
-            'http' => [
-                'method' => 'POST',
-                'header' => "Accept: application/json\r\n",
-                'content' => http_build_query([
-                    'client_id' => GITHUB_CLIENT_ID,
-                    'client_secret' => GITHUB_CLIENT_SECRET,
-                    'code' => $code,
-                    'redirect_uri' => GITHUB_REDIRECT_URI,
-                ]),
-            ],
-        ]));
+        $response = file_get_contents(
+            'https://github.com/login/oauth/access_token',
+            false,
+            stream_context_create([
+                'http' => [
+                    'method' => 'POST',
+                    'header' =>
+                        "Accept: application/json\r\n" .
+                        "Content-Type: application/x-www-form-urlencoded\r\n",
+                    'content' => http_build_query([
+                        'client_id' => GITHUB_CLIENT_ID,
+                        'client_secret' => GITHUB_CLIENT_SECRET,
+                        'code' => $code,
+                        'redirect_uri' => GITHUB_REDIRECT_URI,
+                    ]),
+                ],
+            ])
+        );
 
         $data = json_decode($response, true);
 
@@ -197,7 +203,7 @@ class AuthController
         $response = file_get_contents('https://api.github.com/user', false, $context);
         $user = json_decode($response, true);
 
-        // Email ophalen (GitHub geeft soms null)
+        // Email ophalen
         if (empty($user['email'])) {
             $emails = file_get_contents('https://api.github.com/user/emails', false, $context);
             $emails = json_decode($emails, true);
@@ -227,7 +233,8 @@ class AuthController
         }
 
         if ((int)$user['is_active'] !== 1) {
-            exit('Account is inactive');
+            header('Location: /admin/login');
+            exit;
         }
 
         $_SESSION['user_id'] = (int)$user['id'];
