@@ -291,4 +291,38 @@ final class PostsController
 
         return $errors;
     }
+
+    public function getRevisions(int $postId): void
+    {
+        $post = $this->posts->find($postId);
+        if (!$post) {
+            Flash::set('error', 'Post niet gevonden.');
+            header('Location: ' . ADMIN_BASE_PATH . '/posts');
+            exit;
+        }
+
+        $revisions = $this->posts->getRevisions($postId);
+
+        View::render('revision.php', [
+            'post' => $post,
+            'revisions' => $revisions,
+        ]);
+    }
+
+    public function showRevision(int $postId, int $revisionId): void
+    {
+        $post = $this->posts->find($postId);
+        $revision = $this->posts->findRevision($revisionId);
+
+        if (!$post || !$revision) {
+            Flash::set('error', 'Revisie niet gevonden.');
+            header('Location: ' . ADMIN_BASE_PATH . '/posts/' . $postId . '/revisions');
+            exit;
+        }
+
+        View::render('revision-show.php', [
+            'post' => $post,
+            'revision' => $revision,
+        ]);
+    }
 }

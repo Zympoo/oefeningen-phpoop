@@ -17,6 +17,7 @@ use Admin\Controllers\MediaController;
 use Admin\Controllers\PostsController;
 use Admin\Controllers\UsersController;
 use Admin\Core\Auth;
+use Admin\Core\Flash;
 use Admin\Core\Router;
 use Admin\Models\StatsModel;
 use Admin\Repositories\MediaRepository;
@@ -202,7 +203,7 @@ $router->post('/posts/{id}/delete', function (int $id) use ($requireAdmin): void
 
     PostsRepository::make()->delete($id);
 
-    \Admin\Core\Flash::set('success', 'Post verwijderd.');
+    Flash::set('success', 'Post verwijderd.');
     header('Location: ' . ADMIN_BASE_PATH . '/posts');
     exit;
 });
@@ -235,6 +236,27 @@ $router->post('/media/store', function () use ($requireAdmin): void {
 $router->post('/media/{id}/delete', function (int $id) use ($requireAdmin): void {
     $requireAdmin();
     (new MediaController(MediaRepository::make()))->delete($id);
+});
+
+// Revisions overzicht
+$router->get('/posts/{id}/revisions', function (int $id) use ($requireAdmin): void {
+    $requireAdmin();
+    (new PostsController(PostsRepository::make()))->getRevisions($id);
+});
+
+$router->get('/posts/{postId}/revisions/{revisionId}', function (int $id, int $revisionId): void {
+    (new PostsController(PostsRepository::make()))->showRevision($id, $revisionId);
+});
+
+// Revisions herstellen
+$router->post('/posts/{postId}/revisions/{revisionId}/restore', function (int $postId, int $revisionId) use ($requireAdmin): void {
+    $requireAdmin();
+
+    PostsRepository::make()->restoreRevision($revisionId);
+
+    Flash::set('success', 'Revision hersteld.');
+    header('Location: ' . ADMIN_BASE_PATH . "/posts");
+    exit;
 });
 
 $router->dispatch($uri, $method);

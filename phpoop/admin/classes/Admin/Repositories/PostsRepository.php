@@ -162,6 +162,8 @@ final class PostsRepository
         ?int $featuredMediaId = null, ?string $toPublishAt = null,
         ?string $metaTitle = null, ?string $metaDescription = null
     ): void {
+        $this->saveRevision($id);
+
         $sql = "UPDATE posts
                 SET title = :title,
                     content = :content,
@@ -191,6 +193,120 @@ final class PostsRepository
         $sql = "DELETE FROM posts WHERE id = :id";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute(['id' => $id]);
+    }
+
+
+
+
+    public function saveRevision(int $postId): void
+    {
+        // Haal de huidige post
+        $post = $this->find($postId);
+        if (!$post) return;
+
+        // Voeg revisie toe
+        $sql = "INSERT INTO post_revisions
+            (post_id, title, content, status, featured_media_id, to_publish_at, meta_title, meta_description)
+            VALUES
+            (:post_id, :title, :content, :status, :featured_media_id, :to_publish_at, :meta_title, :meta_description)";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([
+            'post_id' => $postId,
+            'title' => $post['title'],
+            'content' => $post['content'],
+            'status' => $post['status'],
+            'featured_media_id' => $post['featured_media_id'],
+            'to_publish_at' => $post['to_publish_at'],
+            'meta_title' => $post['meta_title'],
+            'meta_description' => $post['meta_description'],
+        ]);
+
+        // --- Limiteer revisies tot max 3 ---
+        // 1. Tel huidige revisies
+        $sql = "SELECT COUNT(*) FROM post_revisions WHERE post_id = :post_id";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute(['post_id' => $postId]);
+        $count = (int)$stmt->fetchColumn();
+
+        // 2. Bereken hoeveel verwijderen
+        $toDelete = $count - 3;
+        if ($toDelete > 0) {
+            $sql = "DELETE FROM post_revisions
+                WHERE post_id = :post_id
+                ORDER BY created_at ASC
+                LIMIT :limit";
+            $stmt = $this->pdo->prepare($sql);
+            // PDO LIMIT kan niet met named parameter als integer, gebruik bindValue
+            $stmt->bindValue('post_id', $postId, PDO::PARAM_INT);
+            $stmt->bindValue('limit', $toDelete, PDO::PARAM_INT);
+            $stmt->execute();
+        }
+    }
+
+    public function getRevisions(int $postId): array
+    {
+        $sql = "SELECT * FROM post_revisions
+            WHERE post_id = :post_id
+            ORDER BY created_at DESC";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute(['post_id' => $postId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    public function findRevision(int $revisionId): ?array
+    {
+        $sql = "SELECT 
+                id,
+                post_id,
+                title,
+                content,
+                status,
+                featured_media_id,
+                to_publish_at,
+                meta_title,
+                meta_description,
+                created_at
+            FROM post_revisions
+            WHERE id = :id
+            LIMIT 1";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute(['id' => $revisionId]);
+
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row !== false ? $row : null;
+    }
+
+    public function restoreRevision(int $revisionId): void
+    {
+        // Haal de revisie
+        $sql = "SELECT * FROM post_revisions WHERE id = :id LIMIT 1";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute(['id' => $revisionId]);
+        $revision = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$revision) return;
+
+        // Update de post met revisie (slug blijft ongewijzigd)
+        $sql = "UPDATE posts
+            SET title = :title,
+                content = :content,
+                status = :status,
+                featured_media_id = :featured_media_id,
+                to_publish_at = :to_publish_at,
+                meta_title = :meta_title,
+                meta_description = :meta_description
+            WHERE id = :post_id";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([
+            'post_id' => $revision['post_id'],
+            'title' => $revision['title'],
+            'content' => $revision['content'],
+            'status' => $revision['status'],
+            'featured_media_id' => $revision['featured_media_id'],
+            'to_publish_at' => $revision['to_publish_at'],
+            'meta_title' => $revision['meta_title'],
+            'meta_description' => $revision['meta_description'],
+        ]);
     }
 // -------------------------
 // FRONTEND (exacte methodnames uit jouw public/index.php)

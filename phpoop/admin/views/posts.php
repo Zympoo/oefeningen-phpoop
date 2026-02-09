@@ -50,6 +50,9 @@ use Admin\Core\Auth;
                                 </form>
                             <?php endif; ?>
                         <?php endif; ?>
+                        <a class="underline text-blue-600" href="/admin/posts/<?php echo (int)$post['id']; ?>/revisions">
+                            Revisies
+                        </a>
                     </td>
                 </tr>
             <?php endforeach; ?>
