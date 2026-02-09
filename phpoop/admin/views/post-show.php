@@ -1,5 +1,8 @@
 <?php
 declare(strict_types=1);
+
+use Admin\Core\Auth;
+
 ?>
 
 <section class="p-6">
@@ -19,9 +22,11 @@ declare(strict_types=1);
 
         <div class="flex gap-10 mt-6">
             <a class="underline" href="/admin/posts">Terug naar overzicht</a>
+            <?php if(Auth::isAdmin()): ?>
             <a class="underline text-red-600" href="/admin/posts/<?php echo (int)$post['id']; ?>/delete">
                 Definitief verwijderen
             </a>
+            <?php endif ?>
         </div>
     </div>
 </section>

@@ -72,6 +72,57 @@ final class PostsRepository
         $stmt->execute(['id' => $id]);
     }
 
+    public function isLocked(int $postId, int $userId, int $timeoutMinutes): bool
+    {
+        $sql = "
+        SELECT 1
+        FROM posts
+        WHERE id = :id
+          AND locked_by IS NOT NULL
+          AND locked_by != :user_id
+          AND locked_at > (NOW() - INTERVAL :minutes MINUTE)
+        LIMIT 1
+    ";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([
+            'id' => $postId,
+            'user_id' => $userId,
+            'minutes' => $timeoutMinutes,
+        ]);
+
+        return (bool)$stmt->fetchColumn();
+    }
+
+    public function lock(int $postId, int $userId): void
+    {
+        $sql = "
+        UPDATE posts
+        SET locked_by = :user_id,
+            locked_at = NOW()
+        WHERE id = :id
+    ";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([
+            'id' => $postId,
+            'user_id' => $userId,
+        ]);
+    }
+
+    public function unlock(int $postId): void
+    {
+        $sql = "
+        UPDATE posts
+        SET locked_by = NULL,
+            locked_at = NULL
+        WHERE id = :id
+    ";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute(['id' => $postId]);
+    }
+
     public function create(
         string $title, string $content, string $status, string $slug,
         ?int $featuredMediaId = null, ?string $toPublishAt = null,

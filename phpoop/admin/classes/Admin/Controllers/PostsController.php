@@ -109,6 +109,17 @@ final class PostsController
             exit;
         }
 
+        $userId = $_SESSION['user_id'];
+
+        if ($this->posts->isLocked($id, $userId, 15)) {
+            Flash::set(
+                'error',
+                'Deze post wordt momenteel bewerkt door een andere admin.'
+            );
+            header('Location: ' . ADMIN_BASE_PATH . '/posts');
+            exit;
+        }
+
         $old = Flash::get('old');
         if (!is_array($old)) {
             $old = [
@@ -121,6 +132,9 @@ final class PostsController
                 'meta_description' => (string)($post['meta_description'] ?? ''),
             ];
         }
+
+
+        $this->posts->lock($id, $userId);
 
         View::render('post-edit.php', [
             'title' => 'Post bewerken',
@@ -169,6 +183,8 @@ final class PostsController
 
         $this->posts->update($id, $title, $content, $status, $slug, $featuredId, $toPublishAt, $metaTitle, $metaDescription);
 
+        $this->posts->unlock($id);
+
         Flash::set('success', 'Post succesvol aangepast.');
         header('Location: ' . ADMIN_BASE_PATH . '/posts');
         exit;
@@ -201,6 +217,8 @@ final class PostsController
         header('Location: /admin/posts');
         exit;
     }
+
+
 
     public function deleteConfirm(int $id): void
     {
